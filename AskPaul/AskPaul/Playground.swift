@@ -12,29 +12,71 @@ import Playgrounds
 
 
 #Playground {
-    if let embeddingModel = NLContextualEmbedding(language: .english)
+
+    let question = """
+        How can I extend a protocol?
+    """
+    var chunks:[Chunk] = Bundle.main.decode("merged_chunks.json")
+
+    if let contextModel = NLContextualEmbedding(language: .english)
     {
         let status = """
-        Created Sentence Embedding 👍🏼.
-          Dimension: \(embeddingModel.dimension),
-          Description: \(embeddingModel.description),
-          Languages: \(embeddingModel.languages)
+        Created Contextual Embedding 👍🏼.
+          Dimension: \(contextModel.dimension),
+          Description: \(contextModel.description),
+          Model Identifier: \(contextModel.modelIdentifier)
         """
         print (status)
-        if embeddingModel.hasAvailableAssets {
+        
+        if contextModel.hasAvailableAssets {
             print("Loading assets...")
-            try await embeddingModel.requestAssets()
+            try await contextModel.requestAssets()
             print("Assets loaded 👍🏼")
         }
-        try embeddingModel.load()
-        let sentence1 = "This is a sentence."
-        let sentence2 = "This is another sentence"
-        let distance = try embeddingModel.distance(between: sentence1, and: sentence2)
-        print (distance)
+        try contextModel.load()
+        
+        print("contextModel: Calc Mean - Started...")
+        _ = try time("contextModel: Calc Mean") {
+            for i in chunks.indices {
+                let vector = try contextModel.vector(for: chunks[i].content, language: .english)
+                chunks[i].vector = vector
+            }
+        }
+        print("contextModel: Calc distance with mean & cosine sim - Started...")
+        _ = try time("contextModel: Calc distance with mean & cosine sim") {
+            for chunk in chunks {
+                let distance = try contextModel.distance(between: question, and: chunk.content)
+            }
+        }
 
     } else {
         print("Error: Failed to create NLContextualEmbedding for English.")
     }
+    
+    if let sentenceEmbedding = NLEmbedding.sentenceEmbedding(for: .english) {
+        let status = """
+        Created NLEmbedding 👍🏼.
+          Dimension: \(sentenceEmbedding.dimension)
+        """
+        print (status)
+        
+        print("sentenceEmbedding: Calc Vactor - Started...")
+        _ = try time("sentenceEmbedding: Calc Vactor") {
+            for i in chunks.indices {
+                let vector = try sentenceEmbedding.vector(for: chunks[i].content)
+                chunks[i].vector = vector
+            }
+        }
+        print("sentenceEmbedding: Calc distance - Started...")
+        _ = try time("sentenceEmbedding: Calc distance") {
+            for chunk in chunks {
+                let distance = try sentenceEmbedding.distance(between: question, and: chunk.content)
+            }
+        }
+
+
+    }
+
 }
 
 

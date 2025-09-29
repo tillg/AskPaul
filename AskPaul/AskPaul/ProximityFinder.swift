@@ -41,7 +41,7 @@ struct ProximityFinder {
         }
     }
     
-    func findClosest<T: HasContent>(to question: String, in chunks: [T], k: Int = 3) -> [T] {
+    func findClosest<T: Embeddable>(to question: String, in chunks: [T], k: Int = 3) -> [T] {
         var distanceCalculations = 0
         let sorted = chunks.sorted { lhs, rhs in
             let dl = distance(between: question, and: lhs.content)

@@ -7,6 +7,7 @@
 
 import Foundation
 
-protocol HasContent {
+protocol Embeddable {
     var content: String { get }
+    var vector: [Double]? { get set }
 }

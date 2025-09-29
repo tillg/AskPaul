@@ -12,12 +12,13 @@ extension NLContextualEmbedding {
     func vector(for sentence : String, language: NLLanguage?) throws -> [Double] {
         
         let result = try self.embeddingResult(for: sentence, language: language)
-        let resultDesc = "NLEmbeddingResult: language: \(result.language), sequenceLength: \(result.sequenceLength), string: \(result.string)"
-        print (resultDesc)
+//        let resultDesc = "NLEmbeddingResult: language: \(result.language), sequenceLength: \(result.sequenceLength), string: \(result.string)"
+//        print (resultDesc)
         
         if let meanVector = meanTokenVector(in: result.string.startIndex..<result.string.endIndex, using: result.enumerateTokenVectors) {
             return(meanVector)
         } else {
+            print("Error! No mean vector found!")
            return []
         }
     }
@@ -26,6 +27,8 @@ extension NLContextualEmbedding {
         let firstVector =  try self.vector(for: firstString, language: nil) ?? []
         let secondVector = try self.vector(for: secondString, language: nil) ?? []
         
-        return cosineSimilarity(firstVector, secondVector) ?? 0.0
+        let cosineSim = cosineSimilarity(firstVector, secondVector) ?? 0.0
+        let distance = 1 - cosineSim
+        return distance
     }
 }
