@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NaturalLanguage
 import Playgrounds
 
 #Playground

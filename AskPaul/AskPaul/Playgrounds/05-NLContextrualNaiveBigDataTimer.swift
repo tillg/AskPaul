@@ -30,9 +30,12 @@ import Playgrounds
     let embeddingStore = EmbeddingStore(model: contextModel)
     let desc = "Loading \(chunks.count) chunks in embeddingStore ~ calculating vectors"
     print(desc)
-    try await time(desc) {
+    try await timerTrack(desc) {
         await embeddingStore.loadChunks(chunks)
     }
+    timerReport(desc)
+    timerReport("Embedding")
+    timerReport("MeanVector")
 
     print("Done loading chunks and computing vectors")
     await time("Calculating closest 5") {

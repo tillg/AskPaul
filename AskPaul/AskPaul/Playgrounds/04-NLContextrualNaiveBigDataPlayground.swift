@@ -11,46 +11,9 @@ import Playgrounds
 
 
 
-
-#Playground("Calc Distances Naive w/ cache")
-{
-    var chunks:[Chunk] = Chunk.chunks
-    
-    print(
-        "Calculating distance between \(chunks.count) pairs of sentences with naive distance and cached vectors"
-    )
-    
-    if let contextModel = NLContextualEmbedding(language: .english)
-    {
-        let status = """
-        Created Contextual Embedding 👍🏼.
-          Dimension: \(contextModel.dimension),
-          Description: \(contextModel.description),
-          Model Identifier: \(contextModel.modelIdentifier)
-        """
-        print (status)
-        
-        if contextModel.hasAvailableAssets {
-            print("Loading assets...")
-            try await contextModel.requestAssets()
-            print("Assets requested 👍🏼")
-        }
-        try contextModel.load()
-        
-        let embeddingStore = EmbeddingStore(model: contextModel)
-        try await time(
-            "Calculating \(chunks.count) distances the naive imple & cached vectors"
-        ) {
-            await embeddingStore.loadChunks(chunks)
-            await embeddingStore.closest(to: "Hello world")
-        }
-        print("Done calculating distances the naive way w/ cached vectors")
-    }
-}
-
 #Playground("Calc closest in array naive & cache")
 {
-    let chunks: [Chunk] = Chunk.chunks
+    let chunks: [Chunk] = Chunk.chunks_all
 
     guard let contextModel = NLContextualEmbedding(language: .english) else {
         fatalError("Cannot create NLContextualEmbedding")
@@ -65,11 +28,10 @@ import Playgrounds
     try contextModel.load()
 
     let embeddingStore = EmbeddingStore(model: contextModel)
-
-    try await time("Loading chunks in embeddingStore ~ calculating vectors") {
+    let desc = "Loading \(chunks.count) chunks in embeddingStore ~ calculating vectors"
+    print(desc)
+    try await time(desc) {
         await embeddingStore.loadChunks(chunks)
-        // Optionally perform a simple query to ensure vectors are computed
-        _ = await embeddingStore.closest(to: "Hello world")
     }
 
     print("Done loading chunks and computing vectors")
