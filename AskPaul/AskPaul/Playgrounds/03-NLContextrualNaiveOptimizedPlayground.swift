@@ -40,7 +40,7 @@ import Playgrounds
         try await time(
             "Calculating \(chunks.count) distances the naive imple & cached vectors"
         ) {
-            await embeddingStore.loadChunks(chunks)
+            await embeddingStore.loadChunksNaive(chunks)
             await embeddingStore.closest(to: "Hello world")
         }
         print("Done calculating distances the naive way w/ cached vectors")
@@ -66,7 +66,7 @@ import Playgrounds
     let embeddingStore = EmbeddingStore(model: contextModel)
 
     try await time("Loading chunks in embeddingStore ~ calculating vectors") {
-        await embeddingStore.loadChunks(chunks)
+        await embeddingStore.loadChunksNaive(chunks)
         // Optionally perform a simple query to ensure vectors are computed
         _ = await embeddingStore.closest(to: "Hello world")
     }

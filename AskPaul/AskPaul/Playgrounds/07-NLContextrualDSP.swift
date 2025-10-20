@@ -11,7 +11,7 @@ import Playgrounds
 
 
 
-#Playground("Calc closest in array naive & cache")
+#Playground("Calc closest in array w/ DSP")
 {
     let chunks: [Chunk] = Chunk.chunks_all
 
@@ -31,7 +31,7 @@ import Playgrounds
     let desc = "Loading \(chunks.count) chunks in embeddingStore ~ calculating vectors"
     print(desc)
     try await timerTrack(desc) {
-        await embeddingStore.loadChunksNaive(chunks)
+        await embeddingStore.loadChunksDSP(chunks)
     }
     timerReport(desc)
     timerReport("Embedding")

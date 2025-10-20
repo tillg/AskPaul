@@ -11,7 +11,7 @@ actor EmbeddingStore {
         self.model = model
     }
 
-    func loadChunks(_ newChunks: [Chunk]) async {
+    func loadChunksNaive(_ newChunks: [Chunk]) async {
         self.chunks = newChunks
 
         await withTaskGroup(of: (String, [Double]?).self) { group in
@@ -20,7 +20,7 @@ actor EmbeddingStore {
                     let chunkId = await MainActor.run { chunk.id }
                     let chunkContent = await MainActor.run { chunk.content }
                     do {
-                        let vector = try await self.computeVector(for: chunkContent)
+                        let vector = try await self.computeVectorNaive(for: chunkContent)
                         return (chunkId, vector)
                     } catch {
                         print("Failed to compute vector for chunk \(chunkId): \(error)")
@@ -36,10 +36,41 @@ actor EmbeddingStore {
             }
         }
     }
+    
+    func loadChunksDSP(_ newChunks: [Chunk]) async {
+        self.chunks = newChunks
 
-    private func computeVector(for content: String) async throws -> [Double] {
+        await withTaskGroup(of: (String, [Double]?).self) { group in
+            for chunk in newChunks {
+                group.addTask {
+                    let chunkId = await MainActor.run { chunk.id }
+                    let chunkContent = await MainActor.run { chunk.content }
+                    do {
+                        let vector = try await self.computeVectorDSP(for: chunkContent)
+                        return (chunkId, vector)
+                    } catch {
+                        print("Failed to compute vector for chunk \(chunkId): \(error)")
+                        return (chunkId, nil)
+                    }
+                }
+            }
+
+            for await (id, vector) in group {
+                if let vector = vector {
+                    vectorCache[id] = vector
+                }
+            }
+        }
+    }
+    private func computeVectorNaive(for content: String) async throws -> [Double] {
         return try await MainActor.run {
             try self.model.vectorNaive(for: content, language: nil)
+        }
+    }
+
+    private func computeVectorDSP(for content: String) async throws -> [Double] {
+        return try await MainActor.run {
+            try self.model.vectorDSP(for: content, language: nil)
         }
     }
 
@@ -51,7 +82,7 @@ actor EmbeddingStore {
             questionVector = cached
         } else {
             do {
-                questionVector = try await computeVector(for: question)
+                questionVector = try await computeVectorNaive(for: question)
                 questionVectorCache[question] = questionVector
             } catch {
                 fatalError("Failed to compute question vector: \(error)")

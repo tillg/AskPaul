@@ -31,7 +31,7 @@ import Playgrounds
     let desc = "Loading \(chunks.count) chunks in embeddingStore ~ calculating vectors"
     print(desc)
     try await timerTrack(desc) {
-        await embeddingStore.loadChunks(chunks)
+        await embeddingStore.loadChunksNaive(chunks)
     }
     timerReport(desc)
     timerReport("Embedding")
