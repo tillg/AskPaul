@@ -37,16 +37,24 @@ xcodebuild test -project AskPaul/AskPaul.xcodeproj -scheme AskPaul -destination 
    - `NLEmbedding.sentenceEmbedding`: Apple's standard sentence embeddings (currently used in production)
    - `NLContextualEmbedding`: Newer contextual embeddings with token-level vectors (experimental, used in playgrounds)
 
-2. **Proximity Search**: `ProximityFinder` performs k-nearest-neighbor search using embedding distance calculations. The current implementation uses a naive O(n*log(n)) approach that sorts all chunks by distance.
+2. **Proximity Search**: Two implementations exist:
+   - `ProximityFinder`: Uses `NLEmbedding.sentenceEmbedding` with O(n*log(n)) sorting during search (legacy, used in ContentView)
+   - `EmbeddingStore.closest()`: Actor-based async search that pre-computes and caches all vectors, then sorts by pre-calculated distances
 
 3. **Data Model**:
-   - `Chunk`: Represents document fragments with content, metadata, and optional cached vectors
-   - `Embeddable` protocol: Defines interface for objects that can generate embedding vectors
-   - `EmbeddingStore`: Actor-based async cache for embedding vectors with in-flight deduplication
+   - `Chunk`: Represents document fragments with content, metadata, and SHA256-based ID. Loads from `merged_chunks.json` or `merged_chunks_all.json`
+   - `Embeddable` protocol: Defines interface for objects that can generate embedding vectors (requires `content` and `id`)
+   - `EmbeddingStore`: Actor-based async cache that pre-computes vectors for all chunks using task groups, with separate caches for chunk vectors and question vectors
 
-4. **Embedding Extensions**:
-   - `NLContextualEmbeddingExtension`: Adds `vectorNaive()` and `distanceNaive()` methods that compute mean vectors from token embeddings
-   - Uses cosine similarity for distance calculations (1 - cosineSimilarity)
+4. **Vector Computation Methods**: The codebase has two approaches for computing mean vectors from contextual embeddings:
+   - **Naive**: Pure Swift loops for vector addition/averaging (`vectorNaive()`, `meanVectorNaive()`)
+   - **DSP**: Uses Apple's Accelerate framework with vDSP for SIMD-accelerated operations (`vectorDSP()`, `meanVectorDSP()`)
+
+5. **Embedding Extensions**:
+   - `NLContextualEmbeddingExtension`: Adds methods to `NLContextualEmbedding` and `NLContextualEmbeddingResult`
+   - Both naive and DSP variants compute mean vectors by enumerating token embeddings
+   - Uses cosine similarity for distance calculations (distance = 1 - cosineSimilarity)
+   - Three cosine similarity implementations: `cosineSimilarityNaive()`, `cosineSimilarityZip()`, and `cosineSimilarity2()` (vDSP-based)
 
 ### Key Design Patterns
 
@@ -57,10 +65,44 @@ xcodebuild test -project AskPaul/AskPaul.xcodeproj -scheme AskPaul -destination 
 
 ### Performance Considerations
 
-- The app logs distance calculation count during proximity search for performance monitoring
-- Vector mean computation iterates through all tokens, which may be expensive for long texts
-- The playground files contain performance comparisons between `NLEmbedding` and `NLContextualEmbedding`
+- `EmbeddingStore` pre-computes all vectors using concurrent task groups for better performance
+- `ProximityFinder.findClosest()` calculates O(n²) distances during sort (logs count for monitoring)
+- `EmbeddingStore.closest()` pre-computes O(n) distances, then sorts - more efficient for repeated queries
+- Vector caching strategies: `EmbeddingStore` caches both chunk vectors and question vectors separately
+- DSP-based implementations use SIMD acceleration for faster vector operations on large datasets
+
+### Playgrounds
+
+The `Playgrounds/` directory contains performance comparison experiments:
+- `01-NLEmbeddingPlayground.swift`: Tests standard `NLEmbedding.sentenceEmbedding`
+- `02-NLContextrualNaivePlayground.swift`: Tests naive contextual embedding approach
+- `03-NLContextrualNaiveOptimizedPlayground.swift`: Optimized naive implementation
+- `04-NLContextrualNaiveBigDataPlayground.swift`: Tests with larger dataset (`merged_chunks_all.json`)
+- `05-NLContextrualNaiveBigDataTimer.swift`: Timed benchmarks with big data
+- `06-vForce.swift`: Tests using vForce/Accelerate framework
+- `07-NLContextrualDSP.swift`: DSP-based implementation tests
+
+Use playgrounds to benchmark performance changes before modifying production code.
+
+## Utility Functions
+
+Key helpers in `VectorsMean.swift`:
+- `mean(of: [[Double]])`: Computes mean of vector arrays using pure Swift
+- `mean2(of: [[Double]])`: vDSP-accelerated mean computation
+- `meanTokenVector(in:using:)`: Generic function that works with any token vector enumerator
+- `cosineSimilarityNaive()`: Pure Swift cosine similarity
+- `cosineSimilarityZip()`: Functional approach using `zip()` and `map()`
+- `cosineSimilarity2()`: vDSP-accelerated using `vDSP_dotprD` and `vDSP_svesqD`
+
+Timing utilities in `Time.swift` and `Timer.swift`:
+- `time()`: Synchronous timing wrapper that prints duration
+- `timerTrack()`: Generic timing function that returns closure result
+- Both support async operations via `await time()`
 
 ## Testing Approach
 
-Tests use Swift Testing framework (not XCTest) with the `@Test` and `@Suite` macros. Integration tests verify that the naive mean vector computation matches the expected mathematical mean.
+Tests use Swift Testing framework (not XCTest) with the `@Test` and `@Suite` macros:
+- `VectorMeanTest.swift`: Integration test that verifies `meanVectorNaive()` computes the correct mathematical mean
+- Tests collect all token vectors, compute mean using `mean()` helper, and compare against extension method output
+- Floating point comparisons use tolerance of `1e-9` for numerical stability
+- Tests handle async operations and may skip if embedding models are unavailable on the device
