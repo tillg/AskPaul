@@ -23,7 +23,6 @@ struct Chunk: Codable, Embeddable {
         "'\(content.prefix(20))...'"
     }
     
-    static let chunks:[Chunk] = Bundle.main.decode("merged_chunks.json")
-    static let chunks_all:[Chunk] = Bundle.main.decode("merged_chunks_all.json")
+    static let chunks:[Chunk] = Bundle.main.decode("chunks.json")
 
 }

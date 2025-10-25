@@ -6,13 +6,15 @@
 //
 
 import SwiftUI
+import NaturalLanguage
 
 struct ContentView: View {
-    let chunks:[Chunk] = Bundle.main.decode("merged_chunks.json")
+    let chunks:[Chunk] = Chunk.chunks
     @State private var question: String = ""
     @State private var bestChunks : [Chunk] = []
     @State private var showSpinner : Bool = false
-    
+    @State private var embeddingStore: EmbeddingStore?
+
     var body: some View {
         VStack {
             Form {
@@ -26,8 +28,10 @@ struct ContentView: View {
                     )
                 Button("Find Answer") {
                     showSpinner = true
-                    getBestChunks()
-                    showSpinner = false
+                    Task {
+                        await getBestChunks()
+                        await MainActor.run { showSpinner = false }
+                    }
                 }
                 .padding()
                 if showSpinner {
@@ -42,17 +46,39 @@ struct ContentView: View {
                 }
             }
         }
-        
-    }
-    
-    func getBestChunks() {
-        do {
-            let proxFinder = try ProximityFinder()
-            bestChunks = proxFinder.findClosest(to: question, in: chunks, k: 10)
-        } catch {
-            print("Error creating ProximityFinder: \(error)")
-            bestChunks = []
+        .task {
+            guard let contextModel = NLContextualEmbedding(language: .english) else {
+                assertionFailure("Cannot create the NLContextualEmbedding")
+                return
+            }
+            showSpinner = true
+            do {
+                if contextModel.hasAvailableAssets {
+                    print("Loading assets...")
+                    try await contextModel.requestAssets()
+                    print("Loading assets... - Done")
+                }
+                print("Loading contextModel...")
+                try contextModel.load()
+                print("Loading contextModel... - Done")
+                embeddingStore = EmbeddingStore(model: contextModel)
+                print("Loading chunks into embeddingStore...")
+                await embeddingStore?.loadChunks(chunks)
+                print("Loading chunks into embeddingStore... - Done")
+            } catch {
+                print("Failed to prepare NLContextualEmbedding: \(error)")
+            }
+            showSpinner = false
         }
+    }
+
+    func getBestChunks() async {
+        guard let embeddingStore = embeddingStore else {
+            print("Embedding store not ready yet")
+            await MainActor.run { bestChunks = [] }
+            return
+        }
+        self.bestChunks = await embeddingStore.closest(to: self.question, k: 20)
     }
 }
 

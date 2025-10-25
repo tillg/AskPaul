@@ -21,16 +21,6 @@
 		F9B1E87E2E8671A1008D3686 /* AskPaul.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AskPaul.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F94351092E9FB21800E1B7BB /* Exceptions for "AskPaul" folder in "AskPaulTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				merged_chunks_all.json,
-			);
-			target = F9A745542E8FD064005568E3 /* AskPaulTests */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F9A745562E8FD064005568E3 /* AskPaulTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -39,9 +29,6 @@
 		};
 		F9B1E8802E8671A1008D3686 /* AskPaul */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				F94351092E9FB21800E1B7BB /* Exceptions for "AskPaul" folder in "AskPaulTests" target */,
-			);
 			path = AskPaul;
 			sourceTree = "<group>";
 		};
